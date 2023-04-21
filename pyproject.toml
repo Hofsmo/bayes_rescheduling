@@ -1,22 +1,27 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "bayes_rescheduling"
-version = "0.0.1"
+name = "sparculing"
+version = "0.1.0"
+description = ""
 authors = [
-  { name="Sigurd Hofsmo Jakobsen", email="sigurd.jakobsen@sintef.no" },
-  ]
-  description = "A package for performing power system damping control using Bayes optimization."
-  readme = "README.md"
-  requires-python = ">=3.7"
-  classifiers = [
-      "Programming Language :: Python :: 3",
-	      "License :: OSI Approved :: MIT License",
-		      "Operating System :: OS Independent",
-			  ]
+    {name = "Sigurd Hofsmo Jakobsen", email = "sigurd.jakobsen@sintef.no"},
+]
+dependencies = [
+    "dynpssimpy @ git+https://github.com/hallvar-h/dynpssimpy",
+]
+requires-python = ">=3.10"
+license = {text = "LGPL"}
 
-[project.urls]
-"Homepage" = "https://github.com/Hofsmo/bayes_rescheduling"
-"Bug Tracker" = "https://github.com/Hofsmo/bayes_rescheduling/issues"
+[project.optional-dependencies]
+examples = [
+    "jupyterlab>=3.6.3",
+    "ipykernel>=6.22.0",
+]
+
+[tool.pdm]
+[tool.pdm.dev-dependencies]
+dev = [
+    "black>=23.3.0",
+]
+
+[tool.pdm.scripts]
+format-code = "black src"
