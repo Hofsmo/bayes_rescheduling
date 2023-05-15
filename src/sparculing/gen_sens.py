@@ -4,7 +4,7 @@ import dynpssimpy.dynamic as dps
 
 
 class GenSensDispatchUnconstrained:
-    def __init__(self, model):
+    def __init__(self, model, dP=0.01):
         self.model = model
         self.p0 = get_gen_power_vector(model)
         self.p = np.copy(self.p0)
@@ -12,24 +12,29 @@ class GenSensDispatchUnconstrained:
         self.ps_lin_0 = get_lin_sys(dps.PowerSystemModel(model=model))
 
         # Initial state
+        remove_inaccurate_zero(self.ps_lin_0)
         self.min_mode = np.argmin(self.ps_lin_0.damping)
+        assert self.min_mode != -1
         self.zeta = self.ps_lin_0.damping[self.min_mode]
         self.eigs_0 = self.ps_lin_0.eigs
         self.eig = self.eigs_0[self.min_mode]
-        self.gen_sens = self.get_gen_sens()
+        self.gen_sens = self.get_gen_sens(dP=dP)
 
         # Initial guesses
         self.l1 = 1
         self.l2 = 1
 
-    def _lagrangian_value(self):
+    def _lagrangian_value(self, zeta_d):
         x = np.zeros(len(self.p) + 2)
-        kappa = self.zeta / np.sqrt(1 - self.zeta ^ 2)
+        kappa = zeta_d / np.sqrt(1 - pow(zeta_d, 2))
         for i, p in enumerate(self.p):
             x[i] = (
                 2 * (p - self.p0[i])
                 + self.l1
-                * (np.real(self.gen_sens[i]) + np.imag(self.gen_sens[i]) * kappa)
+                * (
+                    np.real(self.gen_sens[self.min_mode, i])
+                    + np.imag(self.gen_sens[self.min_mode, i]) * kappa
+                )
                 + self.l2
             )
 
@@ -45,28 +50,30 @@ class GenSensDispatchUnconstrained:
         jac[-2, i] = k
         jac[-1, i] = 1
 
-    def _make_jacobian(self):
+    def _make_jacobian(self, zeta_d):
         jac = np.zeros((len(self.p) + 2, len(self.p) + 2))
-        kappa = self.zeta / np.sqrt(1 - self.zeta ^ 2)
+        kappa = zeta_d / np.sqrt(1 - pow(zeta_d, 2))
         for i, p in enumerate(self.p):
-            k = np.real(self.gen_sens[i]) + kappa * np.imag(self.gen_sens[i])
+            k = np.real(self.gen_sens[self.min_mode, i]) + kappa * np.imag(
+                self.gen_sens[self.min_mode, i]
+            )
             self._set_jacobian_vals(jac, p, self.p0[i], k, i)
         return jac
 
-    def _do_newton_step(self):
-        f = self._lagrangian_value()
-        jac = self._make_jacobian()
+    def _do_newton_step(self, zeta_d):
+        f = self._lagrangian_value(zeta_d)
+        jac = self._make_jacobian(zeta_d)
         return np.linalg.solve(-jac, f)
 
-    def find_dispatch(self, zeta_1=0.1, dP_max=0.05, max_iter=100):
+    def find_dispatch(self, zeta_d=0.1, d_zeta=0.01, dP_max=0.05, max_iter=100):
         zeta_b = self.zeta  # Best damping so far
         p_b = self.p  # Best power dispatch so far
         i = 0  # For controlling max iteration
 
         gen_sensed = True
 
-        while self.zeta < zeta_1 and i < max_iter:
-            dx = self._do_newton_step()
+        while zeta_b < zeta_d and i < max_iter:
+            dx = self._do_newton_step(zeta_b + d_zeta)
 
             self.l1 += dx[-2]
             self.l2 += dx[-1]
@@ -94,7 +101,7 @@ class GenSensDispatchUnconstrained:
             i += 1
         return p_b, zeta_b
 
-    def get_gen_sens(self, dP=1e-3):
+    def get_gen_sens(self, dP=0.01):
         sens = np.zeros((len(self.eigs_0), len(self.p)), dtype=complex)
 
         for gen_i, rating in enumerate(self.ratings):
@@ -102,15 +109,23 @@ class GenSensDispatchUnconstrained:
 
             powers = self._change_power_with_distributed_slack(change, gen_i)
             change_all_gen_powers(self.model, powers)
-
-            sens[:, gen_i] = get_lin_sys(dps.PowerSystemModel(model=self.model)).eigs
+            
+            ps_lin = get_lin_sys(dps.PowerSystemModel(model=self.model))
+            remove_inaccurate_zero(ps_lin)
+            sens[:, gen_i] = ps_lin.eigs
 
             powers = self._change_power_with_distributed_slack(-2 * change, gen_i)
 
             change_all_gen_powers(self.model, powers)
 
-            sens[:, gen_i] -= get_lin_sys(dps.PowerSystemModel(model=self.model)).eigs
+            ps_lin = get_lin_sys(dps.PowerSystemModel(model=self.model))
+            remove_inaccurate_zero(ps_lin)
+            
+            sens[:, gen_i] -= ps_lin.eigs
             sens[:, gen_i] = sens[:, gen_i] / (self.ratings[gen_i] * 2 * dP)
+            
+            powers = self._change_power_with_distributed_slack(change, gen_i)
+            change_all_gen_powers(self.model, powers)
 
         return sens
 

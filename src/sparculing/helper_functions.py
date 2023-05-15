@@ -1,4 +1,3 @@
-import dynpssimpy.dynamic as dps
 import dynpssimpy.modal_analysis as dps_mdl
 import numpy as np
 
@@ -15,11 +14,21 @@ def change_all_gen_powers(model, powers):
     for i, power in enumerate(powers):
         change_gen_power(model, i, power)
 
+def change_load_power(model, load_i, power):
+    model["loads"][load_i + 1][2] = power
+
+def change_all_load_powers(model, powers):
+    for i, power in enumerate(powers):
+        change_load_power(model, i, power)
+
 
 def get_gen_power_vector(model):
     """Returns the powers of the generators in a case."""
     return np.array([gen[4] for gen in model["generators"]["GEN"][1:]])
 
+def get_load_power_vector(model):
+    """Returns the powers of the generators in a case."""
+    return np.array([load[2] for load in model["loads"][1:]])
 
 def get_gen_ratings(model):
     """Returns the ratings of the generators in the case model."""
@@ -46,13 +55,11 @@ def get_lin_sys(ps):
     return ps_lin
 
 
-def get_min_damping(ps_lin):
-    """Calculate minimum damping."""
+def remove_inaccurate_zero(ps_lin):
     zero_eig_idx = abs(ps_lin.eigs) < 1e-4
     assert sum(zero_eig_idx) == 1
     ps_lin.eigs[zero_eig_idx] = 0
     ps_lin.damping[zero_eig_idx] = np.inf
-    return np.min(ps_lin.damping)
 
 
 def get_random_dispatch(model, std=0.01):
