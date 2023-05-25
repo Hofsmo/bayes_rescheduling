@@ -2,52 +2,53 @@ import dynpssimpy.modal_analysis as dps_mdl
 import numpy as np
 
 
-def change_gen_power(model, gen_i, power):
-    model["generators"]["GEN"][gen_i + 1][4] = power
+def change_gen_power(ps, gen_i, power):
+    ps.gen["GEN"].par['P'][gen_i] = power
 
 
-def change_all_gen_powers(model, powers):
+def change_all_gen_powers(ps, powers):
     """Change the generation in a case.
 
     Changes the set point of generators.
     """
     for i, power in enumerate(powers):
-        change_gen_power(model, i, power)
+        change_gen_power(ps, i, power)
 
-def change_load_power(model, load_i, power):
-    model["loads"][load_i + 1][2] = power
+def change_load_power(ps, load_i, power):
+    ps.loads['Load'].par['P'][load_i] = power
 
-def change_all_load_powers(model, powers):
+def change_all_load_powers(ps, powers):
     for i, power in enumerate(powers):
-        change_load_power(model, i, power)
+        change_load_power(ps, i, power)
 
 
-def get_gen_power_vector(model):
+def get_gen_power_vector(ps):
     """Returns the powers of the generators in a case."""
-    return np.array([gen[4] for gen in model["generators"]["GEN"][1:]])
+    return ps.gen['GEN'].par['P']  #  np.array([gen[4] for gen in model["generators"]["GEN"][1:]])
 
-def get_load_power_vector(model):
+def get_load_power_vector(ps):
     """Returns the powers of the generators in a case."""
-    return np.array([load[2] for load in model["loads"][1:]])
+    return ps.loads['Load'].par['P']  # np.array([load[2] for load in model["loads"][1:]])
 
-def get_gen_ratings(model):
+def get_gen_ratings(ps):
     """Returns the ratings of the generators in the case model."""
-    return np.array([gen[2] for gen in model["generators"]["GEN"][1:]])
+    return ps.gen['GEN'].par['S_n']  # np.array([gen[2] for gen in model["generators"]["GEN"][1:]])
 
 
-def get_gen_names(model):
+def get_gen_names(ps):
     """Returns the names of the machines in the case model."""
-    return [gen[0] for gen in model["generators"]["GEN"][1:]]
+    return ps.gen['GEN'].par['name']  # [gen[0] for gen in model["generators"]["GEN"][1:]]
 
 
-def reschedule_and_get_min_damping(model, powers):
+def reschedule_and_get_min_damping(ps, powers):
     """Change the power and calculate minimum damping."""
-    ps = change_all_gen_powers(model, powers)
+    ps = change_all_gen_powers(ps, powers)
     return get_min_damping(ps)
 
 
 def get_lin_sys(ps):
     "Returns the linerisation of the system"
+    ps.power_flow()
     ps.init_dyn_sim()
     ps_lin = dps_mdl.PowerSystemModelLinearization(ps)
     ps_lin.linearize()
@@ -62,17 +63,17 @@ def remove_inaccurate_zero(ps_lin):
     ps_lin.damping[zero_eig_idx] = np.inf
 
 
-def get_random_dispatch(model, std=0.01):
+def get_random_dispatch(ps, std=0.01):
     """Caclulate a new random balanced dispatch.
 
     The methods draws generator powers from a normal distribution centered,
     around the current dispatch. The change in power compared to the base
     case is distributed based on generator ratings.
     """
-    old_powers = get_gen_power_vector(model)
+    old_powers = get_gen_power_vector(ps)
     new_powers = [np.random.normal(power, power * std) for power in old_powers]
     slack = sum(old_powers) - sum(new_powers)
-    ratings = get_gen_ratings(model)
+    ratings = get_gen_ratings(ps)
     total_rating = sum(ratings)
     new_powers += slack * ratings / total_rating  # I should consider limits later
     return new_powers
