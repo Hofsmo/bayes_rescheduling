@@ -1,5 +1,19 @@
 import dynpssimpy.modal_analysis as dps_mdl
 import numpy as np
+from scipy import optimize
+
+
+def match_eigenvalues(v1, v2, dist=lambda x1, x2: abs(x1 - x2), return_idx=False):
+    # From https://stackoverflow.com/questions/54183370/how-to-sort-vector-to-have-minimal-distance-to-another-vector-efficiently
+    assert v1.ndim == v2.ndim == 1
+    assert v1.shape[0] == v2.shape[0]
+    n = v1.shape[0]
+    t = np.dtype(dist(v1[0], v2[0]))
+    dist_matrix = np.fromiter((dist(x1, x2) for x1 in v1 for x2 in v2),
+                              dtype=t, count=n*n).reshape(n, n)
+    row_ind, col_ind = optimize.linear_sum_assignment(dist_matrix)
+    return (v2[col_ind], col_ind) if return_idx else v2[col_ind]
+
 
 
 def change_gen_power(ps, gen_i, power):

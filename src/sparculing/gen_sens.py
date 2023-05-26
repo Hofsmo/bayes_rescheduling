@@ -111,8 +111,9 @@ class GenSensDispatchUnconstrained:
             
         ps_lin = get_lin_sys(self.ps)
         remove_inaccurate_zero(ps_lin)
-        sens = ps_lin.eigs.copy()
-        eigs_0 = ps_lin.eigs.copy()
+        eigs_1 = ps_lin.eigs.copy()
+        eigs_1 = match_eigenvalues(self.eigs_0, eigs_1)
+        sens = eigs_1.copy()
 
         powers = self._change_power_with_distributed_slack(-2 * change, gen_i)
 
@@ -120,44 +121,21 @@ class GenSensDispatchUnconstrained:
 
         ps_lin = get_lin_sys(self.ps)
         remove_inaccurate_zero(ps_lin)
-            
-        sens -= ps_lin.eigs
+        eigs_2 = ps_lin.eigs.copy()
+        eigs_2 = match_eigenvalues(self.eigs_0, eigs_2)
+        sens -= eigs_2
         sens = sens / (self.ratings[gen_i] * 2 * dP)
-        eigs_1 = ps_lin.eigs.copy()
+        
             
         powers = self._change_power_with_distributed_slack(change, gen_i)
         change_all_gen_powers(self.ps, powers)
 
-        return (sens, eigs_0, eigs_1) if return_eigs else sens
+        return (sens, eigs_1, eigs_2) if return_eigs else sens
     
     def get_gen_sens(self, dP=0.01):
         sens = np.zeros((len(self.eigs_0), len(self.p)), dtype=complex)
 
         for gen_i, rating in enumerate(self.ratings):
-            
-            # change = rating * dP
-
-            # powers = self._change_power_with_distributed_slack(change, gen_i)
-            # change_all_gen_powers(self.ps, powers)
-            
-            # ps_lin = get_lin_sys(dps.PowerSystemModel(model=self.ps))
-            # remove_inaccurate_zero(ps_lin)
-            # sens[:, gen_i] = ps_lin.eigs
-            # eigs_0 = ps_lin.eigs.copy()
-
-            # powers = self._change_power_with_distributed_slack(-2 * change, gen_i)
-
-            # change_all_gen_powers(self.ps, powers)
-
-            # ps_lin = get_lin_sys(dps.PowerSystemModel(model=self.ps))
-            # remove_inaccurate_zero(ps_lin)
-            
-            # sens[:, gen_i] -= ps_lin.eigs
-            # sens[:, gen_i] = sens[:, gen_i] / (self.ratings[gen_i] * 2 * dP)
-            # eigs_1 = ps_lin.eigs.copy()
-            
-            # powers = self._change_power_with_distributed_slack(change, gen_i)
-            # change_all_gen_powers(self.ps, powers)
             sens[:, gen_i] = self.get_gen_sens_single_gen(gen_i, dP=dP)
 
         return sens
