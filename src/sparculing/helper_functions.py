@@ -40,6 +40,10 @@ def get_gen_power_vector(ps):
     """Returns the powers of the generators in a case."""
     return ps.gen['GEN'].par['P']  #  np.array([gen[4] for gen in model["generators"]["GEN"][1:]])
 
+def get_gen_power_vector_after_pf(ps):
+    """Returns the powers of the generators in a case."""
+    return ps.load_flow_soln[ps.gen['GEN']].real
+
 def get_load_power_vector(ps):
     """Returns the powers of the generators in a case."""
     return ps.loads['Load'].par['P']  # np.array([load[2] for load in model["loads"][1:]])

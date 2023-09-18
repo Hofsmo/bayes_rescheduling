@@ -6,10 +6,12 @@ import dynpssimpy.dynamic as dps
 class GenSensDispatchUnconstrained:
     def __init__(self, ps, dP=0.01):
         self.ps = ps
-        self.p0 = get_gen_power_vector(ps)
-        self.p = np.copy(self.p0)
         self.ratings = get_gen_ratings(ps)
         self.ps_lin_0 = get_lin_sys(ps)
+        
+        # Important to do this after running the power flow.
+        self.p0 = get_gen_power_vector_after_pf(ps)
+        self.p = np.copy(self.p0)
 
         # Initial state
         remove_inaccurate_zero(self.ps_lin_0)
@@ -79,6 +81,7 @@ class GenSensDispatchUnconstrained:
             self.l2 += dx[-1]
 
             for i in np.arange(len(self.p)):
+                # Should probably update with the value from after pf instead.
                 self.p[i] -= dx[i]
 
             change_all_gen_powers(self.ps, self.p)
@@ -132,7 +135,7 @@ class GenSensDispatchUnconstrained:
 
         return (sens, eigs_1, eigs_2) if return_eigs else sens
     
-    def get_gen_sens(self, dP=0.01):
+    def get_gen_sens(self, dP=0.05):
         sens = np.zeros((len(self.eigs_0), len(self.p)), dtype=complex)
 
         for gen_i, rating in enumerate(self.ratings):
