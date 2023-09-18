@@ -46,7 +46,7 @@ class GenSensDispatchUnconstrained:
         return x
 
     def _set_jacobian_vals(self, jac, p, p0, k, i):
-        jac[i, i] = 2 * (p - p0)
+        jac[i, i] = 2
         jac[i, -2] = k
         jac[i, -1] = 1
         jac[-2, i] = k
@@ -135,7 +135,7 @@ class GenSensDispatchUnconstrained:
 
         return (sens, eigs_1, eigs_2) if return_eigs else sens
     
-    def get_gen_sens(self, dP=0.05):
+    def get_gen_sens(self, dP=0.1):
         sens = np.zeros((len(self.eigs_0), len(self.p)), dtype=complex)
 
         for gen_i, rating in enumerate(self.ratings):
