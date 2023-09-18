@@ -104,7 +104,7 @@ class GenSensDispatchUnconstrained:
             i += 1
         return p_b, zeta_b
 
-    def get_gen_sens_single_gen(self, gen_i, dP=0.01, return_eigs=False):
+    def get_gen_sens_single_gen(self, gen_i, dP=0.001, return_eigs=False):
         sens = np.zeros(len(self.eigs_0), dtype=complex)
         rating = self.ratings[gen_i]
 
@@ -135,7 +135,7 @@ class GenSensDispatchUnconstrained:
 
         return (sens, eigs_1, eigs_2) if return_eigs else sens
     
-    def get_gen_sens(self, dP=0.1):
+    def get_gen_sens(self, dP=0.001):
         sens = np.zeros((len(self.eigs_0), len(self.p)), dtype=complex)
 
         for gen_i, rating in enumerate(self.ratings):
